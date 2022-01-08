@@ -11,6 +11,7 @@ from pathlib import Path
 import math
 import os
 import sys
+import soundfile as sf
 
 import torchaudio
 from torch.nn import functional as F
@@ -30,7 +31,7 @@ def get_info(path):
         return Info(siginfo.length // siginfo.channels, siginfo.rate, siginfo.channels)
 
 
-def find_audio_files(path, exts=[".wav"], progress=True):
+def find_audio_files(path, exts=[".raw"], progress=True):
     audio_files = []
     for root, folders, files in os.walk(path, followlinks=True):
         for file in files:
@@ -86,23 +87,25 @@ class Audioset:
             if self.length is not None:
                 offset = self.stride * index
                 num_frames = self.length
-            if torchaudio.get_audio_backend() in ['soundfile', 'sox_io']:
-                out, sr = torchaudio.load(str(file),
-                                          frame_offset=offset,
-                                          num_frames=num_frames or -1)
-            else:
-                out, sr = torchaudio.load(str(file), offset=offset, num_frames=num_frames)
-            target_sr = self.sample_rate or sr
-            target_channels = self.channels or out.shape[0]
-            if self.convert:
-                out = convert_audio(out, sr, target_sr, target_channels)
-            else:
-                if sr != target_sr:
-                    raise RuntimeError(f"Expected {file} to have sample rate of "
-                                       f"{target_sr}, but got {sr}")
-                if out.shape[0] != target_channels:
-                    raise RuntimeError(f"Expected {file} to have sample rate of "
-                                       f"{target_channels}, but got {sr}")
+            # torchaudio.set_audio_backend('soundfile')
+            # if torchaudio.get_audio_backend() in ['soundfile', 'sox_io']:
+            #     out, sr = torchaudio.load(str(file),
+            #                               frame_offset=offset,
+            #                               num_frames=num_frames or -1)
+            # else:
+            #     out, sr = torchaudio.load(str(file), offset=offset, num_frames=num_frames)
+            # target_sr = self.sample_rate or sr
+            # target_channels = self.channels or out.shape[0]
+            # if self.convert:
+            #     out = convert_audio(out, sr, target_sr, target_channels)
+            # else:
+            #     if sr != target_sr:
+            #         raise RuntimeError(f"Expected {file} to have sample rate of "
+            #                            f"{target_sr}, but got {sr}")
+            #     if out.shape[0] != target_channels:
+            #         raise RuntimeError(f"Expected {file} to have sample rate of "
+            #                            f"{target_channels}, but got {sr}")
+            out, _ = sf.read(str(file), samplerate=5000, channels=1, subtype="FLOAT")
             if num_frames:
                 out = F.pad(out, (0, num_frames - out.shape[-1]))
             if self.with_path:
