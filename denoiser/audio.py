@@ -5,7 +5,6 @@
 # LICENSE file in the root directory of this source tree.
 # author: adefossez
 
-from collections import namedtuple
 import json
 from pathlib import Path
 import math
@@ -14,7 +13,6 @@ import sys
 import soundfile as sf
 from torch.nn import functional as F
 
-from .dsp import convert_audio
 
 LENGTH = 10000
 def find_audio_files(path, exts=[".raw"], progress=True):
@@ -23,7 +21,7 @@ def find_audio_files(path, exts=[".raw"], progress=True):
         for file in files:
             file = Path(root) / file
             if file.suffix.lower() in exts:
-                meta.append((file, LENGTH))
+                meta.append((str(file.resolve()), LENGTH))
     meta.sort()
     return meta
 
