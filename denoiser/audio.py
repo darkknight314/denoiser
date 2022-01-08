@@ -12,38 +12,18 @@ import math
 import os
 import sys
 import soundfile as sf
-
-import torchaudio
 from torch.nn import functional as F
 
 from .dsp import convert_audio
 
-Info = namedtuple("Info", ["length", "sample_rate", "channels"])
-
-
-def get_info(path):
-    info = torchaudio.info(path)
-    if hasattr(info, 'num_frames'):
-        # new version of torchaudio
-        return Info(info.num_frames, info.sample_rate, info.num_channels)
-    else:
-        siginfo = info[0]
-        return Info(siginfo.length // siginfo.channels, siginfo.rate, siginfo.channels)
-
-
+LENGTH = 10000
 def find_audio_files(path, exts=[".raw"], progress=True):
-    audio_files = []
+    meta = []
     for root, folders, files in os.walk(path, followlinks=True):
         for file in files:
             file = Path(root) / file
             if file.suffix.lower() in exts:
-                audio_files.append(str(file.resolve()))
-    meta = []
-    for idx, file in enumerate(audio_files):
-        info = get_info(file)
-        meta.append((file, info.length))
-        if progress:
-            print(format((1 + idx) / len(audio_files), " 3.1%"), end='\r', file=sys.stderr)
+                meta.append((file, LENGTH))
     meta.sort()
     return meta
 
