@@ -67,9 +67,9 @@ class Audioset:
                 num_frames = self.length
             # torchaudio.set_audio_backend('soundfile')
             # if torchaudio.get_audio_backend() in ['soundfile', 'sox_io']:
-            #     out, sr = torchaudio.load(str(file),
-            #                               frame_offset=offset,
-            #                               num_frames=num_frames or -1)
+                # out, sr = torchaudio.load(str(file),
+                #                           frame_offset=offset,
+                #                           num_frames=num_frames or -1)
             # else:
             #     out, sr = torchaudio.load(str(file), offset=offset, num_frames=num_frames)
             # target_sr = self.sample_rate or sr
@@ -83,7 +83,7 @@ class Audioset:
             #     if out.shape[0] != target_channels:
             #         raise RuntimeError(f"Expected {file} to have sample rate of "
             #                            f"{target_channels}, but got {sr}")
-            out, _ = sf.read(str(file), samplerate=5000, channels=1, subtype="FLOAT")
+            out = torch.from_numpy(sf.read(str(file), samplerate=5000, channels=1, subtype="FLOAT")[0])
             if num_frames:
                 out = F.pad(out, (0, num_frames - out.shape[-1]))
             if self.with_path:
