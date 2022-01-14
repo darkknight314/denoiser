@@ -57,7 +57,6 @@ class Audioset:
 
     def __getitem__(self, index):
         import torch
-        
         for (file, _), examples in zip(self.files, self.num_examples):
             if index >= examples:
                 index -= examples
@@ -85,7 +84,7 @@ class Audioset:
             #     if out.shape[0] != target_channels:
             #         raise RuntimeError(f"Expected {file} to have sample rate of "
             #                            f"{target_channels}, but got {sr}")
-            out = torch.from_numpy(sf.read(str(file), samplerate=5000, channels=1, subtype="FLOAT")[0])
+            out = torch.from_numpy(sf.read(str(file), samplerate=5000, channels=1, subtype="FLOAT")[0]).float()
             if num_frames:
                 out = F.pad(out, (0, num_frames - out.shape[-1]))
             if self.with_path:
