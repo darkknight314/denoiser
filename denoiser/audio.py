@@ -85,6 +85,7 @@ class Audioset:
             #         raise RuntimeError(f"Expected {file} to have sample rate of "
             #                            f"{target_channels}, but got {sr}")
             out = torch.from_numpy(sf.read(str(file), samplerate=5000, channels=1, subtype="FLOAT")[0]).float()
+            out = out.unsqueeze(0)
             if num_frames:
                 out = F.pad(out, (0, num_frames - out.shape[-1]))
             if self.with_path:
