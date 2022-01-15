@@ -68,7 +68,7 @@ def match_files(noisy, clean, matching="sort"):
 
 class NoisyCleanSet:
     def __init__(self, json_dir, matching="sort", length=None, stride=None,
-                 pad=True, sample_rate=None):
+                 pad=True, sample_rate=5000):
         """__init__.
 
         :param json_dir: directory containing both clean.json and noisy.json
@@ -78,6 +78,7 @@ class NoisyCleanSet:
         :param pad: pad the end of the sequence with zeros
         :param sample_rate: the signals sampling rate
         """
+
         noisy_json = os.path.join(json_dir, 'noisy.json')
         clean_json = os.path.join(json_dir, 'clean.json')
         with open(noisy_json, 'r') as f:
