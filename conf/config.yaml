@@ -1,13 +1,13 @@
 defaults:
-  - dset: debug
+  - dset: conf
   - hydra/job_logging: colorlog
   - hydra/hydra_logging: colorlog
 
 # Dataset related
 sample_rate: 5000
-segment: 4
+segment: 20
 stride: 1    # in seconds, how much to stride between training examples
-pad: false   # if training sample is too short, pad it
+pad: true   # if training sample is too short, pad it
 
 # Dataset Augmentation
 remix: false   # remix noise and clean
