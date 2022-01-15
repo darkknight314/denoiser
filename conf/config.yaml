@@ -4,10 +4,10 @@ defaults:
   - hydra/hydra_logging: colorlog
 
 # Dataset related
-sample_rate: 16000
+sample_rate: 5000
 segment: 4
 stride: 1    # in seconds, how much to stride between training examples
-pad: true   # if training sample is too short, pad it
+pad: false   # if training sample is too short, pad it
 
 # Dataset Augmentation
 remix: false   # remix noise and clean
@@ -25,7 +25,7 @@ show: 0   # just show the model and its size and exit
 
 # Checkpointing, by default automatically load last checkpoint
 checkpoint: true
-continue_from: '' # Path the a checkpoint.th file to start from.
+continue_from: '/content/drive/MyDrive/Dataset/Demucs/checkpoint' # Path the a checkpoint.th file to start from.
                   # this is not used in the name of the experiment!
                   # so use a dummy=something not to mixup experiments.
 continue_best: false  # continue from best, not last state if continue_from is set.
@@ -42,7 +42,7 @@ seed: 2036
 dummy:  # use this if you want twice the same exp, with a different name
 
 # Evaluation stuff
-pesq: True # compute pesq?
+pesq: False # compute pesq?
 eval_every: 10  # compute test metrics every so epochs
 dry: 0.  # dry/wet knob value at eval
 streaming: False  # use streaming evaluation for Demucs
