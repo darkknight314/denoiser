@@ -85,7 +85,7 @@ def _estimate_and_run_metrics(clean, model, noisy, args):
     return _run_metrics(clean, estimate, args, sr=model.sample_rate)
 
 
-def _run_metrics(clean, estimate, args, sr):
+def _run_metrics(clean, estimate, args, sr=5000):
     estimate = estimate.numpy()[:, 0]
     clean = clean.numpy()[:, 0]
     if args.pesq:

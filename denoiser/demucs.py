@@ -86,7 +86,7 @@ class Demucs(nn.Module):
                  glu=True,
                  rescale=0.1,
                  floor=1e-3,
-                 sample_rate=16_000):
+                 sample_rate=5_000):
 
         super().__init__()
         if resample not in [1, 2, 4]:
