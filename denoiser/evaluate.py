@@ -9,129 +9,148 @@ import argparse
 from concurrent.futures import ProcessPoolExecutor
 import json
 import logging
+import os
 import sys
 
-from pesq import pesq
-from pystoi import stoi
 import torch
-
-from .data import NoisyCleanSet
-from .enhance import add_flags, get_estimate
+import torchaudio
+import soundfile as sf
+from .audio import Audioset, find_audio_files
 from . import distrib, pretrained
-from .utils import bold, LogProgress
+from .demucs import DemucsStreamer
+
+from .utils import LogProgress
 
 logger = logging.getLogger(__name__)
 
+
+def add_flags(parser):
+    """
+    Add the flags for the argument parser that are related to model loading and evaluation"
+    """
+    pretrained.add_model_flags(parser)
+    parser.add_argument('--device', default="cpu")
+    parser.add_argument('--dry', type=float, default=0,
+                        help='dry/wet knob coefficient. 0 is only input signal, 1 only denoised.')
+    parser.add_argument('--num_workers', type=int, default=10)
+    parser.add_argument('--streaming', action="store_true",
+                        help="true streaming evaluation for Demucs")
+
+
 parser = argparse.ArgumentParser(
-        'denoiser.evaluate',
-        description='Speech enhancement using Demucs - Evaluate model performance')
+        'denoiser.enhance',
+        description="Speech enhancement using Demucs - Generate enhanced files")
 add_flags(parser)
-parser.add_argument('--data_dir', help='directory including noisy.json and clean.json files')
-parser.add_argument('--matching', default="sort", help='set this to dns for the dns dataset.')
-parser.add_argument('--no_pesq', action="store_false", dest="pesq", default=True,
-                    help="Don't compute PESQ.")
+parser.add_argument("--out_dir", type=str, default="enhanced",
+                    help="directory putting enhanced wav files")
+parser.add_argument("--batch_size", default=1, type=int, help="batch size")
 parser.add_argument('-v', '--verbose', action='store_const', const=logging.DEBUG,
-                    default=logging.INFO, help="More loggging")
+                    default=logging.INFO, help="more loggging")
+
+group = parser.add_mutually_exclusive_group()
+group.add_argument("--noisy_dir", type=str, default=None,
+                   help="directory including noisy wav files")
+group.add_argument("--noisy_json", type=str, default=None,
+                   help="json file including noisy wav files")
 
 
-def evaluate(args, model=None, data_loader=None):
-    total_pesq = 0
-    total_stoi = 0
-    total_cnt = 0
-    updates = 5
+def get_estimate(model, noisy, args):
+    torch.set_num_threads(1)
+    if args.streaming:
+        streamer = DemucsStreamer(model, dry=args.dry)
+        with torch.no_grad():
+            estimate = torch.cat([
+                streamer.feed(noisy[0]),
+                streamer.flush()], dim=1)[None]
+    else:
+        with torch.no_grad():
+            estimate = model(noisy)
+            estimate = (1 - args.dry) * estimate + args.dry * noisy
+    return estimate
 
+
+def save_wavs(estimates, noisy_sigs, filenames, out_dir, sr=16_000):
+    # Write result
+    for estimate, noisy, filename in zip(estimates, noisy_sigs, filenames):
+        filename = os.path.join(out_dir, os.path.basename(filename).rsplit(".", 1)[0])
+        write(noisy, filename + "_noisy.raw", sr=sr)
+        write(estimate, filename + "_enhanced.raw", sr=sr)
+
+
+def write(signal, filename, sr=16_000):
+    # Normalize audio if it prevents clipping
+    # wav = wav / max(wav.abs().max().item(), 1)
+    # torchaudio.save(filename, wav.cpu(), sr)
+    sf.write(filename, signal.squeeze().numpy(), 5000, subtype="FLOAT")
+
+
+def get_dataset(args, sample_rate, channels):
+    if hasattr(args, 'dset'):
+        paths = args.dset
+    else:
+        paths = args
+    if paths.noisy_json:
+        with open(paths.noisy_json) as f:
+            files = json.load(f)
+    elif paths.noisy_dir:
+        files = find_audio_files(paths.noisy_dir)
+    else:
+        logger.warning(
+            "Small sample set was not provided by either noisy_dir or noisy_json. "
+            "Skipping enhancement.")
+        return None
+    return Audioset(files, with_path=True,
+                    sample_rate=sample_rate, channels=channels, convert=True)
+
+
+def _estimate_and_save(model, noisy_signals, filenames, out_dir, args):
+    estimate = get_estimate(model, noisy_signals, args)
+    save_wavs(estimate, noisy_signals, filenames, out_dir, sr=model.sample_rate)
+
+
+def enhance(args, model=None, local_out_dir=None):
     # Load model
     if not model:
         model = pretrained.get_model(args).to(args.device)
     model.eval()
-
-    # Load data
-    if data_loader is None:
-        dataset = NoisyCleanSet(args.data_dir,
-                                matching=args.matching, sample_rate=model.sample_rate)
-        data_loader = distrib.loader(dataset, batch_size=1, num_workers=2)
-    pendings = []
-    with ProcessPoolExecutor(args.num_workers) as pool:
-        with torch.no_grad():
-            iterator = LogProgress(logger, data_loader, name="Eval estimates")
-            for i, data in enumerate(iterator):
-                # Get batch data
-                noisy, clean = [x.to(args.device) for x in data]
-                # If device is CPU, we do parallel evaluation in each CPU worker.
-                if args.device == 'cpu':
-                    pendings.append(
-                        pool.submit(_estimate_and_run_metrics, clean, model, noisy, args))
-                else:
-                    estimate = get_estimate(model, noisy, args)
-                    estimate = estimate.cpu()
-                    clean = clean.cpu()
-                    pendings.append(
-                        pool.submit(_run_metrics, clean, estimate, args))
-                total_cnt += clean.shape[0]
-
-        for pending in LogProgress(logger, pendings, updates, name="Eval metrics"):
-            pesq_i, stoi_i = pending.result()
-            total_pesq += pesq_i
-            total_stoi += stoi_i
-
-    metrics = [total_pesq, total_stoi]
-    pesq, stoi = distrib.average([m/total_cnt for m in metrics], total_cnt)
-    logger.info(bold(f'Test set performance:PESQ={pesq}, STOI={stoi}.'))
-    return pesq, stoi
-
-
-def _estimate_and_run_metrics(clean, model, noisy, args):
-    estimate = get_estimate(model, noisy, args)
-    return _run_metrics(clean, estimate, args, sr=model.sample_rate)
-
-
-def _run_metrics(clean, estimate, args, sr=5000):
-    estimate = estimate.numpy()[:, 0]
-    clean = clean.numpy()[:, 0]
-    if args.pesq:
-        pesq_i = get_pesq(clean, estimate, sr=sr)
+    if local_out_dir:
+        out_dir = local_out_dir
     else:
-        pesq_i = 0
-    stoi_i = get_stoi(clean, estimate, sr=sr)
-    return pesq_i, stoi_i
+        out_dir = args.out_dir
+
+    dset = get_dataset(args, model.sample_rate, model.chin)
+    if dset is None:
+        return
+    loader = distrib.loader(dset, batch_size=1)
+
+    if distrib.rank == 0:
+        os.makedirs(out_dir, exist_ok=True)
+    distrib.barrier()
+
+    with ProcessPoolExecutor(args.num_workers) as pool:
+        iterator = LogProgress(logger, loader, name="Generate enhanced files")
+        pendings = []
+        for data in iterator:
+            # Get batch data
+            noisy_signals, filenames = data
+            noisy_signals = noisy_signals.to(args.device)
+            if args.device == 'cpu' and args.num_workers > 1:
+                pendings.append(
+                    pool.submit(_estimate_and_save,
+                                model, noisy_signals, filenames, out_dir, args))
+            else:
+                # Forward
+                estimate = get_estimate(model, noisy_signals, args)
+                save_wavs(estimate, noisy_signals, filenames, out_dir, sr=model.sample_rate)
+
+        if pendings:
+            print('Waiting for pending jobs...')
+            for pending in LogProgress(logger, pendings, updates=5, name="Generate enhanced files"):
+                pending.result()
 
 
-def get_pesq(ref_sig, out_sig, sr):
-    """Calculate PESQ.
-    Args:
-        ref_sig: numpy.ndarray, [B, T]
-        out_sig: numpy.ndarray, [B, T]
-    Returns:
-        PESQ
-    """
-    pesq_val = 0
-    for i in range(len(ref_sig)):
-        pesq_val += pesq(sr, ref_sig[i], out_sig[i], 'wb')
-    return pesq_val
-
-
-def get_stoi(ref_sig, out_sig, sr):
-    """Calculate STOI.
-    Args:
-        ref_sig: numpy.ndarray, [B, T]
-        out_sig: numpy.ndarray, [B, T]
-    Returns:
-        STOI
-    """
-    stoi_val = 0
-    for i in range(len(ref_sig)):
-        stoi_val += stoi(ref_sig[i], out_sig[i], sr, extended=False)
-    return stoi_val
-
-
-def main():
+if __name__ == "__main__":
     args = parser.parse_args()
     logging.basicConfig(stream=sys.stderr, level=args.verbose)
     logger.debug(args)
-    pesq, stoi = evaluate(args)
-    json.dump({'pesq': pesq, 'stoi': stoi}, sys.stdout)
-    sys.stdout.write('\n')
-
-
-if __name__ == '__main__':
-    main()
+    enhance(args, local_out_dir=args.out_dir)
