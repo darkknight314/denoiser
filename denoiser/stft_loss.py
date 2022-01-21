@@ -99,6 +99,18 @@ class STFTLoss(torch.nn.Module):
         return sc_loss, mag_loss
 
 
+class CustomLoss(torch.nn.Module):
+    def __init__(self, fft_size=1024, hop_size=120, win_length=600, window="hann_window"):
+        """Initialize STFT loss module."""
+        super(CustomLoss, self).__init__()
+        self.stft_loss = STFTLoss(fft_size, hop_size, win_length, window)
+    
+    def forward(self, x, y):
+        sc_l, mag_l = self.stft_loss(x, y)
+        l1_l = torch.abs(x-y)
+        return sc_l, mag_l, l1_l
+
+
 class MultiResolutionSTFTLoss(torch.nn.Module):
     """Multi resolution STFT loss module."""
 
@@ -134,11 +146,14 @@ class MultiResolutionSTFTLoss(torch.nn.Module):
         """
         sc_loss = 0.0
         mag_loss = 0.0
+        l1_loss = 0.0
         for f in self.stft_losses:
-            sc_l, mag_l = f(x, y)
+            sc_l, mag_l, l1_l = f(x, y)
             sc_loss += sc_l
             mag_loss += mag_l
+            l1_loss += l1_l
         sc_loss /= len(self.stft_losses)
         mag_loss /= len(self.stft_losses)
+        l1_loss /= len(self.stft_losses)
 
-        return self.factor_sc*sc_loss, self.factor_mag*mag_loss
+        return self.factor_sc*sc_loss, self.factor_mag*mag_loss, l1_loss

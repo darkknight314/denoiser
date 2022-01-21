@@ -220,8 +220,8 @@ class Solver(object):
                     raise ValueError(f"Invalid loss {self.args.loss}")
                 # MultiResolution STFT loss
                 if self.args.stft_loss:
-                    sc_loss, mag_loss = self.mrstftloss(estimate.squeeze(1), clean.squeeze(1))
-                    loss += sc_loss + mag_loss
+                    sc_loss, mag_loss, l1_loss = self.mrstftloss(estimate.squeeze(1), clean.squeeze(1))
+                    loss += sc_loss + mag_loss + l1_loss
 
                 # optimize model in training mode
                 if not cross_valid:

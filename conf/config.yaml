@@ -25,7 +25,7 @@ show: 0   # just show the model and its size and exit
 
 # Checkpointing, by default automatically load last checkpoint
 checkpoint: true
-continue_from: '/content/drive/MyDrive/Dataset/Demucs/outputs' # Path the a checkpoint.th file to start from.
+continue_from: '/content/drive/MyDrive/Dataset/Demucs/outputs/' # Path the a checkpoint.th file to start from.
                   # this is not used in the name of the experiment!
                   # so use a dummy=something not to mixup experiments.
 continue_best: false  # continue from best, not last state if continue_from is set.
@@ -65,9 +65,9 @@ demucs:
   chout: 1
   hidden: 48
   max_hidden: 10000
-  causal: true
+  causal: false
   glu: true
-  depth: 5
+  depth: 3
   kernel_size: 8
   stride: 4
   normalize: true
@@ -87,7 +87,7 @@ world_size:
 # Hydra config
 hydra:
   run:
-    dir: ./outputs/exp_${hydra.job.override_dirname}
+    dir: ./outputs/dev-pratik/exp_${hydra.job.override_dirname}
   job:
     config:
       # configuration for the ${hydra.job.override_dirname} runtime variable
