@@ -81,7 +81,7 @@ def write(signal, filename, sr=16_000):
     # Normalize audio if it prevents clipping
     # wav = wav / max(wav.abs().max().item(), 1)
     # torchaudio.save(filename, wav.cpu(), sr)
-    sf.write(filename, signal.squeeze().numpy(), 5000, subtype="FLOAT")
+    sf.write(filename, signal.squeeze().cpu().numpy(), 5000, subtype="FLOAT")
 
 
 def get_dataset(args, sample_rate, channels):
