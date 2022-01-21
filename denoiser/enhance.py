@@ -14,7 +14,7 @@ import sys
 
 import torch
 import torchaudio
-
+import soundfile as sf
 from .audio import Audioset, find_audio_files
 from . import distrib, pretrained
 from .demucs import DemucsStreamer
@@ -73,14 +73,15 @@ def save_wavs(estimates, noisy_sigs, filenames, out_dir, sr=16_000):
     # Write result
     for estimate, noisy, filename in zip(estimates, noisy_sigs, filenames):
         filename = os.path.join(out_dir, os.path.basename(filename).rsplit(".", 1)[0])
-        write(noisy, filename + "_noisy.wav", sr=sr)
-        write(estimate, filename + "_enhanced.wav", sr=sr)
+        write(noisy, filename + "_noisy.raw", sr=sr)
+        write(estimate, filename + "_enhanced.raw", sr=sr)
 
 
-def write(wav, filename, sr=16_000):
+def write(signal, filename, sr=16_000):
     # Normalize audio if it prevents clipping
-    wav = wav / max(wav.abs().max().item(), 1)
-    torchaudio.save(filename, wav.cpu(), sr)
+    # wav = wav / max(wav.abs().max().item(), 1)
+    # torchaudio.save(filename, wav.cpu(), sr)
+    sf.write(filename, signal.squeeze().numpy(), 5000, subtype="FLOAT")
 
 
 def get_dataset(args, sample_rate, channels):
