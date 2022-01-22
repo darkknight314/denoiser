@@ -43,7 +43,7 @@ dummy:  # use this if you want twice the same exp, with a different name
 
 # Evaluation stuff
 pesq: False # compute pesq?
-eval_every: 10  # compute test metrics every so epochs
+eval_every:  # compute test metrics every so epochs
 dry: 0.  # dry/wet knob value at eval
 streaming: False  # use streaming evaluation for Demucs
 
@@ -87,7 +87,7 @@ world_size:
 # Hydra config
 hydra:
   run:
-    dir: ./outputs/dev-pratik/exp_${hydra.job.override_dirname}
+    dir: /content/drive/MyDrive/Dataset/Demucs/outputs/dev-pratik/exp_${hydra.job.override_dirname}
   job:
     config:
       # configuration for the ${hydra.job.override_dirname} runtime variable
