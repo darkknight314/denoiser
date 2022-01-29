@@ -13,6 +13,7 @@ import time
 import sys
 
 import torch
+import matplotlib.pyplot as plt 
 
 logger = logging.getLogger(__name__)
 
@@ -172,3 +173,12 @@ def bold(text):
     Display text in bold in the terminal.
     """
     return colorize(text, "1")
+
+
+def plot_waveform(signal, color='gray'):
+    """
+    Generates the figures for given waveforms
+    """
+    fig = plt.figure(figsize=(12, 6), dpi=150)
+    plt.plot(signal, color=color)
+    return fig
