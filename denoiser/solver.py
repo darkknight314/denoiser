@@ -35,11 +35,7 @@ class Solver(object):
         self.optimizer = optimizer
         self.writer = SummaryWriter(log_dir='outdir', comment='v1')
         
-        for data in self.cv_loader:
-            self.noisy_sample, self.clean_sample = data[0].to(self.device)
-            break
-        self.noisy_fig = plot_waveform(self.noisy_sample)
-
+        
         # data augment
         augments = []
         if args.remix:
@@ -56,6 +52,10 @@ class Solver(object):
         # Training config
         self.device = args.device
         self.epochs = args.epochs
+        for data in self.cv_loader:
+            self.noisy_sample, self.clean_sample = data[0].to(self.device)
+            break
+        self.noisy_fig = plot_waveform(self.noisy_sample)
 
         # Checkpoints
         self.continue_from = args.continue_from
