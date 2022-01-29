@@ -18,7 +18,9 @@ from . import augment, distrib, pretrained
 from .enhance import enhance
 from .evaluate import evaluate
 from .stft_loss import MultiResolutionSTFTLoss
-from .utils import bold, copy_state, pull_metric, serialize_model, swap_state, LogProgress
+from .utils import bold, copy_state, pull_metric, serialize_model, swap_state, LogProgress, plot_waveform
+
+from torch.utils.tensorboard import SummaryWriter
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +33,12 @@ class Solver(object):
         self.model = model
         self.dmodel = distrib.wrap(model)
         self.optimizer = optimizer
+        self.writer = SummaryWriter(log_dir='outdir', comment='v1')
+        
+        for data in self.cv_loader:
+            self.noisy_sample, self.clean_sample = data[0].to(self.device)
+            break
+        self.noisy_fig = plot_waveform(self.noisy_sample)
 
         # data augment
         augments = []
@@ -162,6 +170,11 @@ class Solver(object):
                 logger.info(bold('New best valid loss %.4f'), valid_loss)
                 self.best_state = copy_state(self.model.state_dict())
 
+            sample_estimate = self.dmodel(self.noisy_sample)
+            clean_fig = plot_waveform(sample_estimate)
+            self.writer.add_figure('Sample Output/clean', clean_fig, epoch+1)
+            self.writer.add_figure('Sample Output/noisy', self.noisy_fig, epoch+1)
+
             # evaluate and enhance samples every 'eval_every' argument number of epochs
             # also evaluate on last epoch
             if ((epoch + 1) % self.eval_every == 0 or epoch == self.epochs - 1) and self.tt_loader:
@@ -200,6 +213,7 @@ class Solver(object):
         label = ["Train", "Valid"][cross_valid]
         name = label + f" | Epoch {epoch + 1}"
         logprog = LogProgress(logger, data_loader, updates=self.num_prints, name=name)
+        num_batches = len(data_loader)
         for i, data in enumerate(logprog):
             noisy, clean = [x.to(self.device) for x in data]
             if not cross_valid:
@@ -211,13 +225,16 @@ class Solver(object):
             # apply a loss function after each layer
             with torch.autograd.set_detect_anomaly(True):
                 if self.args.loss == 'l1':
-                    loss = F.l1_loss(clean, estimate)
+                    base_loss = F.l1_loss(clean, estimate)
                 elif self.args.loss == 'l2':
-                    loss = F.mse_loss(clean, estimate)
+                    base_loss = F.mse_loss(clean, estimate)
                 elif self.args.loss == 'huber':
-                    loss = F.smooth_l1_loss(clean, estimate)
+                    base_loss = F.smooth_l1_loss(clean, estimate)
                 else:
                     raise ValueError(f"Invalid loss {self.args.loss}")
+                
+                loss = base_loss
+
                 # MultiResolution STFT loss
                 if self.args.stft_loss:
                     sc_loss, mag_loss = self.mrstftloss(estimate.squeeze(1), clean.squeeze(1))
@@ -229,8 +246,23 @@ class Solver(object):
                     loss.backward()
                     self.optimizer.step()
 
+            step = epoch*num_batches + i
+
+            if cross_valid:
+                self.writer.add_scalar('Base Loss/val', base_loss, step)
+                self.writer.add_scalar('SC Loss/val', sc_loss, step)
+                self.writer.add_scalar('Mag Loss/val', mag_loss, step)
+                # self.writer.add_scalar('FT Loss/val', ft_loss, step)
+            else:
+                self.writer.add_scalar('Base Loss/train', base_loss, step)
+                self.writer.add_scalar('SC Loss/train', sc_loss, step)
+                self.writer.add_scalar('Mag Loss/train', mag_loss, step)
+                # self.writer.add_scalar('FT Loss/val', ft_loss, step)
+
             total_loss += loss.item()
             logprog.update(loss=format(total_loss / (i + 1), ".5f"))
+            
             # Just in case, clear some memory
             del loss, estimate
+
         return distrib.average([total_loss / (i + 1)], i + 1)[0]
