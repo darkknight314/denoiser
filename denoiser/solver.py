@@ -57,7 +57,7 @@ class Solver(object):
             self.gt_ecg_sample = samples[1][0].squeeze()
             break
         self.scg_fig = plot_waveform(self.scg_sample.numpy())
-        self.gt_ecg_fig = plot_waveform(self.scg_sample.numpy())
+        self.gt_ecg_fig = plot_waveform(self.gt_ecg_sample.numpy())
         self.writer.add_figure('Sample Output/scg', self.scg_fig, 0)
         self.writer.add_figure('Sample Output/gt_ecg', self.gt_ecg_fig, 0)
 
