@@ -52,11 +52,15 @@ class Solver(object):
         # Training config
         self.device = args.device
         self.epochs = args.epochs
-        for data in self.cv_loader:
-            self.noisy_sample = data[0].to(self.device)
-            self.clean_sample = data[1].to(self.device)
+        for samples in self.cv_loader:
+            self.scg_sample = samples[0][0].squeeze()
+            self.gt_ecg_sample = samples[1][0].squeeze()
             break
-        self.noisy_fig = plot_waveform(self.noisy_sample)
+        self.scg_fig = plot_waveform(self.scg_sample.numpy())
+        self.gt_ecg_fig = plot_waveform(self.scg_sample.numpy())
+        self.writer.add_figure('Sample Output/scg', self.scg_fig, 0)
+        self.writer.add_figure('Sample Output/gt_ecg', self.gt_ecg_fig, 0)
+
 
         # Checkpoints
         self.continue_from = args.continue_from
@@ -171,10 +175,9 @@ class Solver(object):
                 logger.info(bold('New best valid loss %.4f'), valid_loss)
                 self.best_state = copy_state(self.model.state_dict())
 
-            sample_estimate = self.dmodel(self.noisy_sample)
-            clean_fig = plot_waveform(sample_estimate)
-            self.writer.add_figure('Sample Output/clean', clean_fig, epoch+1)
-            self.writer.add_figure('Sample Output/noisy', self.noisy_fig, epoch+1)
+            sample_estimate = self.dmodel(self.scg_sample)
+            ecg_fig = plot_waveform(sample_estimate.cpu().numpy())
+            self.writer.add_figure('Sample Output/generated_ecg', ecg_fig, epoch)
 
             # evaluate and enhance samples every 'eval_every' argument number of epochs
             # also evaluate on last epoch

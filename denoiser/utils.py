@@ -180,5 +180,5 @@ def plot_waveform(signal, color='gray'):
     Generates the figures for given waveforms
     """
     fig = plt.figure(figsize=(12, 6), dpi=150)
-    plt.plot(signal[0][0], color=color)
+    plt.plot(signal, color=color)
     return fig
