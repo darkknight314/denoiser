@@ -142,3 +142,26 @@ class MultiResolutionSTFTLoss(torch.nn.Module):
         mag_loss /= len(self.stft_losses)
 
         return self.factor_sc*sc_loss, self.factor_mag*mag_loss
+
+
+class CFTLoss(torch.nn.Module):
+    """CFT loss module."""
+
+    def __init__(self):
+        """Initialize CFT loss module."""
+        super(CFTLoss, self).__init__()
+
+    def forward(self, x, y):
+        """Calculate forward propagation.
+        Args:
+            x (Tensor): Predicted signal (B, T).
+            y (Tensor): Groundtruth signal (B, T).
+        Returns:
+            Tensor: L1 difference between FT of Predicted and GT signal
+        """
+        x_mag = torch.fft.fft(x)
+        y_mag = torch.fft.fft(y)
+
+        l1_loss = torch.nn.L1Loss()
+
+        return l1_loss(x_mag, y_mag)

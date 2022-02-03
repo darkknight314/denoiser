@@ -17,7 +17,7 @@ import torch.nn.functional as F
 from . import augment, distrib, pretrained
 from .enhance import enhance
 from .evaluate import evaluate
-from .stft_loss import MultiResolutionSTFTLoss
+from .stft_loss import MultiResolutionSTFTLoss, CFTLoss
 from .utils import bold, copy_state, pull_metric, serialize_model, swap_state, LogProgress, plot_waveform
 
 from torch.utils.tensorboard import SummaryWriter
@@ -80,6 +80,7 @@ class Solver(object):
         self.args = args
         self.mrstftloss = MultiResolutionSTFTLoss(factor_sc=args.stft_sc_factor,
                                                   factor_mag=args.stft_mag_factor).to(self.device)
+        self.cftloss = CFTLoss()
         self._reset()
 
     def _serialize(self):
@@ -244,6 +245,10 @@ class Solver(object):
                     sc_loss, mag_loss = self.mrstftloss(estimate.squeeze(1), clean.squeeze(1))
                     loss += sc_loss + mag_loss
 
+                if self.args.cft_loss:
+                    cft_loss = self.cftloss(estimate.squeeze(1), clean.squeeze(1))
+                    loss += cft_loss
+
                 # optimize model in training mode
                 if not cross_valid:
                     self.optimizer.zero_grad()
@@ -256,12 +261,14 @@ class Solver(object):
                 self.writer.add_scalar('Base Loss/val', base_loss, step)
                 self.writer.add_scalar('SC Loss/val', sc_loss, step)
                 self.writer.add_scalar('Mag Loss/val', mag_loss, step)
-                # self.writer.add_scalar('FT Loss/val', ft_loss, step)
+                if self.args.cft_loss:
+                    self.writer.add_scalar('CFT Loss/val', cft_loss, step)
             else:
                 self.writer.add_scalar('Base Loss/train', base_loss, step)
                 self.writer.add_scalar('SC Loss/train', sc_loss, step)
                 self.writer.add_scalar('Mag Loss/train', mag_loss, step)
-                # self.writer.add_scalar('FT Loss/val', ft_loss, step)
+                if self.args.cft_loss:
+                    self.writer.add_scalar('CFT Loss/train', cft_loss, step)
 
             total_loss += loss.item()
             logprog.update(loss=format(total_loss / (i + 1), ".5f"))
