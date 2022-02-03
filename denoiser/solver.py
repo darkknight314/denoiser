@@ -56,8 +56,8 @@ class Solver(object):
             self.scg_sample = samples[0][0].squeeze()
             self.gt_ecg_sample = samples[1][0].squeeze()
             break
-        self.scg_fig = plot_waveform(self.scg_sample.numpy())
-        self.gt_ecg_fig = plot_waveform(self.gt_ecg_sample.numpy())
+        self.scg_fig = plot_waveform(self.scg_sample.numpy()[10000:15000])
+        self.gt_ecg_fig = plot_waveform(self.gt_ecg_sample.numpy()[10000:15000])
         self.writer.add_figure('Sample Output/scg', self.scg_fig, 0)
         self.writer.add_figure('Sample Output/gt_ecg', self.gt_ecg_fig, 0)
 
@@ -176,7 +176,7 @@ class Solver(object):
                 self.best_state = copy_state(self.model.state_dict())
 
             sample_estimate = self.dmodel(self.scg_sample)
-            ecg_fig = plot_waveform(sample_estimate.cpu().numpy())
+            ecg_fig = plot_waveform(sample_estimate.cpu().numpy()[10000:15000])
             self.writer.add_figure('Sample Output/generated_ecg', ecg_fig, epoch)
 
             # evaluate and enhance samples every 'eval_every' argument number of epochs
