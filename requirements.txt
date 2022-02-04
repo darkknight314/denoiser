@@ -1,3 +1,4 @@
+hydra
 hydra_core==0.11.3
 hydra_colorlog==0.1.4
 julius
