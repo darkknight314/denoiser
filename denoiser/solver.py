@@ -54,9 +54,9 @@ class Solver(object):
         self.epochs = args.epochs
         for samples in self.cv_loader:
             scg_sample = samples[0][0].squeeze().to(self.device)
-            self.scg_sample = torch.reshape(scg_sample, (1, 1, scg_sample.shape[0])
+            self.scg_sample = torch.reshape(scg_sample, (1, 1, scg_sample.shape[0]))
             gt_ecg_sample = samples[1][0].squeeze().to(self.device)
-            self.gt_ecg_sample = torch.reshape(gt_ecg_sample, (1, 1, gt_ecg_sample.shape[0])
+            self.gt_ecg_sample = torch.reshape(gt_ecg_sample, (1, 1, gt_ecg_sample.shape[0]))
             break
         self.scg_fig = plot_waveform(self.scg_sample[0][0].cpu().numpy()[10000:15000])
         self.gt_ecg_fig = plot_waveform(self.gt_ecg_sample[0][0].cpu().numpy()[10000:15000])
