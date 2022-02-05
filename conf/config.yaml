@@ -17,7 +17,7 @@ shift_same: false   # shift noise and clean by the same amount
 revecho: 0  # add reverb like augment
 
 # Logging and printing, and does not impact training
-num_prints: 2
+num_prints: 5
 device: cuda
 num_workers: 2
 verbose: 1
@@ -25,12 +25,12 @@ show: 0   # just show the model and its size and exit
 
 # Checkpointing, by default automatically load last checkpoint
 checkpoint: true
-continue_from: '/content/drive/MyDrive/Dataset/Demucs/outputs/' # Path the a checkpoint.th file to start from.
+continue_from:  ''# Path the a checkpoint.th file to start from.
                   # this is not used in the name of the experiment!
                   # so use a dummy=something not to mixup experiments.
 continue_best: false  # continue from best, not last state if continue_from is set.
 continue_pretrained:   # use either dns48, dns64 or master64 to fine tune from pretrained-model
-restart: false # Ignore existing checkpoints
+restart: true # Ignore existing checkpoints
 checkpoint_file: checkpoint.th
 best_file: best.th  # will contain only best model at any point
 history_file: history.json
@@ -38,25 +38,25 @@ samples_dir: samples
 save_again: false  # if true, only load checkpoint and save again, useful to reexport best.th
 
 # Other stuff
-seed: 2036
+seed: 42
 dummy:  # use this if you want twice the same exp, with a different name
 
 # Evaluation stuff
-pesq: False # compute pesq?
+pesq: false # compute pesq?
 eval_every:  # compute test metrics every so epochs
 dry: 0.  # dry/wet knob value at eval
-streaming: False  # use streaming evaluation for Demucs
+streaming: false  # use streaming evaluation for Demucs
 
 # Optimization related
 optim: adam
-lr: 3e-4
+lr: 1e-3
 beta2: 0.999
 loss: l1
-cft_loss: False
-stft_loss: True
+cft_loss: true
+stft_loss: true
 stft_sc_factor: .5
 stft_mag_factor: .5
-epochs: 500
+epochs: 100
 batch_size: 16
 
 # Models
@@ -88,7 +88,7 @@ world_size:
 # Hydra config
 hydra:
   run:
-    dir: /content/drive/MyDrive/Dataset/Demucs/outputs/dev/exp_${hydra.job.override_dirname}
+    dir: /content/drive/MyDrive/Dataset/Demucs/outputs/dev-shyam/exp_${hydra.job.override_dirname}
   job:
     config:
       # configuration for the ${hydra.job.override_dirname} runtime variable
