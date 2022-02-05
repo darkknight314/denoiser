@@ -53,13 +53,11 @@ class Solver(object):
         self.device = args.device
         self.epochs = args.epochs
         for samples in self.cv_loader:
-            scg_sample = samples[0][0].squeeze().to(self.device)
-            self.scg_sample = torch.reshape(scg_sample, (1, 1, scg_sample.shape[0]))
-            gt_ecg_sample = samples[1][0].squeeze().to(self.device)
-            self.gt_ecg_sample = torch.reshape(gt_ecg_sample, (1, 1, gt_ecg_sample.shape[0]))
+            self.scg_sample = samples[0][0].squeeze()
+            self.gt_ecg_sample = samples[1][0].squeeze()
             break
-        self.scg_fig = plot_waveform(self.scg_sample[0][0].cpu().numpy()[10000:15000])
-        self.gt_ecg_fig = plot_waveform(self.gt_ecg_sample[0][0].cpu().numpy()[10000:15000])
+        self.scg_fig = plot_waveform(self.scg_sample.numpy()[10000:15000])
+        self.gt_ecg_fig = plot_waveform(self.gt_ecg_sample.numpy()[10000:15000])
         self.writer.add_figure('Sample Output/scg', self.scg_fig, 0)
         self.writer.add_figure('Sample Output/gt_ecg', self.gt_ecg_fig, 0)
 
@@ -178,8 +176,8 @@ class Solver(object):
                 logger.info(bold('New best valid loss %.4f'), valid_loss)
                 self.best_state = copy_state(self.model.state_dict())
 
-            sample_estimate = self.dmodel(self.scg_sample)
-            ecg_fig = plot_waveform(sample_estimate.cpu().numpy()[10000:15000])
+            sample_estimate = self.dmodel(self.scg_sample.unsqueeze().unsqueeze())
+            ecg_fig = plot_waveform(sample_estimate.squeeze().detach().cpu().numpy()[10000:15000])
             self.writer.add_figure('Sample Output/generated_ecg', ecg_fig, epoch)
 
             # evaluate and enhance samples every 'eval_every' argument number of epochs
