@@ -176,7 +176,7 @@ class Solver(object):
                 logger.info(bold('New best valid loss %.4f'), valid_loss)
                 self.best_state = copy_state(self.model.state_dict())
 
-            sample_estimate = self.dmodel(self.scg_sample.unsqueeze().unsqueeze())
+            sample_estimate = self.dmodel(self.scg_sample.unsqueeze(0).unsqueeze(0).to(self.device))
             ecg_fig = plot_waveform(sample_estimate.squeeze().detach().cpu().numpy()[10000:15000])
             self.writer.add_figure('Sample Output/generated_ecg', ecg_fig, epoch)
 
