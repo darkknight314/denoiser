@@ -43,7 +43,7 @@ dummy:  # use this if you want twice the same exp, with a different name
 
 # Evaluation stuff
 pesq: false # compute pesq?
-eval_every:  # compute test metrics every so epochs
+eval_every: 2 # compute test metrics every so epochs
 dry: 0.  # dry/wet knob value at eval
 streaming: false  # use streaming evaluation for Demucs
 
